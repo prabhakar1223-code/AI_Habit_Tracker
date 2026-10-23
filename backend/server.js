@@ -17,7 +17,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'https://ai-habit-tracker-yvbk.vercel.app',
+  'https://ai-habit-tracker-xqjp.vercel.app',
   ...(process.env.CLIENT_URL
     ? [new URL(process.env.CLIENT_URL).origin]
     : [])
