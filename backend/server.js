@@ -40,6 +40,12 @@ app.use(express.json({ limit: '1mb' }));
 // Register your API routes above these middleware functions.
 
 // Handle unknown routes and application errors
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Backend is running successfully!"
+  });
+});
 app.use("/api/auth", authRouter);
 app.use("/api/habits",habitRouter);
 app.use("/api/logs",logRouter);
