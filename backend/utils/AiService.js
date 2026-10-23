@@ -33,6 +33,7 @@ export const chatCompletion = async ({
   system,
   user,
   temperature = 0.7,
+  responseMimeType,
 }) => {
   const c = getClient();
 
@@ -59,6 +60,7 @@ export const chatCompletion = async ({
       ],
       generationConfig: {
         temperature,
+        ...(responseMimeType ? { responseMimeType } : {}),
       },
     });
 

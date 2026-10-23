@@ -16,17 +16,15 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://127.0.0.1:5173'
+  'http://127.0.0.1:5173',
+  ...(process.env.CLIENT_URL ? [new URL(process.env.CLIENT_URL).origin] : [])
 ];
 
 const corsOptions = {
   origin(origin, cb) {
     if (!origin) return cb(null, true);
 
-    if (
-      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
-      allowedOrigins.includes(origin)
-    ) {
+    if (allowedOrigins.includes(origin)) {
       return cb(null, true);
     }
 
@@ -36,7 +34,6 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
-app.use(express.json());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 

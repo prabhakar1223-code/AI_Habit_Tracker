@@ -1,10 +1,11 @@
 
-import Habit from "../models/Habit.js";
+import Habit, { Categories } from "../models/Habit.js";
 import HabitLog from "../models/HabitLog.js";
 import AIInsight from "../models/AiInsights.js";
 
 import {
   chatCompletion,
+  parseJSON,
   SYSTEM_PROMPTS,
 } from "../utils/AiService.js";
 
@@ -98,7 +99,9 @@ User goals: ${goals || "not provided"}
 Most productive time: ${productiveTime || "not provided"}
 Past struggles: ${struggles || "not provided"}
 
-Suggest 3 personalized habits.
+Suggest exactly 3 personalized habits. Use only these category values:
+Health, Fitness, Learning, Mindfulness, Productivity, Social, Finance,
+Creative, Other. Frequency must be either "daily" or "weekly".
 Return valid JSON in this format:
 {
   "suggestions": [
@@ -117,84 +120,46 @@ Return valid JSON in this format:
     const { ok, content } = await chatCompletion({
       system: SYSTEM_PROMPTS.suggestion,
       user: userMsg,
+      responseMimeType: "application/json",
     });
 
-   
-if (!ok) {
-  console.error("AI unavailable:", content);
-
-  const fallbackSuggestions = [
-    {
-      name: "10-minute morning walk",
-      description: "Start the day with light movement and fresh air.",
-      frequency: "daily",
-      category: "Fitness",
-      icon: "🚶",
-      reason: "A simple way to build consistency.",
-    },
-    {
-      name: "Read 5 pages",
-      description: "Read a few pages every day.",
-      frequency: "daily",
-      category: "Learning",
-      icon: "📚",
-      reason: "Small daily sessions build knowledge.",
-    },
-    {
-      name: "Plan tomorrow for 5 minutes",
-      description: "Write down your priorities for tomorrow.",
-      frequency: "daily",
-      category: "Productivity",
-      icon: "📝",
-      reason: "Helps you start the next day with clarity.",
-    },
-  ];
-
-  return res.status(200).json(fallbackSuggestions);
-}
-
-
-    let suggestions = [];
-
-    try {
-      const cleaned = content
-        .trim()
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/, "");
-
-      const parsed = JSON.parse(cleaned);
-      suggestions = parsed.suggestions || [];
-    } catch (err) {
-      suggestions = [];
+    if (!ok) {
+      return res.status(502).json({ message: content });
     }
 
-    if (!Array.isArray(suggestions) || suggestions.length === 0) {
-      suggestions = [
-        {
-          name: "10-minute morning walk",
-          description: "Start the day with light movement and fresh air.",
-          frequency: "daily",
-          category: "Fitness",
-          icon: "🚶",
-          reason: "A simple way to build consistency.",
-        },
-        {
-          name: "Read 5 pages",
-          description: "Read a few pages every day to build a learning routine.",
-          frequency: "daily",
-          category: "Learning",
-          icon: "📚",
-          reason: "Small daily sessions build knowledge over time.",
-        },
-        {
-          name: "Plan tomorrow for 5 minutes",
-          description: "Write down your top priorities for the next day.",
-          frequency: "daily",
-          category: "Productivity",
-          icon: "📝",
-          reason: "Helps you start the next day with clarity.",
-        },
-      ];
+    let parsed;
+    try {
+      parsed = parseJSON(content);
+    } catch (err) {
+      console.error("Invalid AI habit suggestion response:", err.message);
+      return res.status(502).json({
+        message: "The AI returned an invalid response. Please try again.",
+      });
+    }
+
+    const suggestions = parsed?.suggestions;
+    const isValidSuggestions =
+      Array.isArray(suggestions) &&
+      suggestions.length === 3 &&
+      suggestions.every(
+        (suggestion) =>
+          suggestion &&
+          typeof suggestion === "object" &&
+          ["name", "description", "frequency", "category", "icon", "reason"]
+            .every(
+              (field) =>
+                typeof suggestion[field] === "string" &&
+                suggestion[field].trim().length > 0
+            ) &&
+          ["daily", "weekly"].includes(suggestion.frequency) &&
+          Categories.includes(suggestion.category)
+      );
+
+    if (!isValidSuggestions) {
+      console.error("Invalid AI habit suggestion response format.");
+      return res.status(502).json({
+        message: "The AI returned invalid suggestions. Please try again.",
+      });
     }
 
     await AIInsight.create({
